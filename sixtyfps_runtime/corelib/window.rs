@@ -143,6 +143,8 @@ pub struct Window {
     scale_factor: Pin<Box<Property<f32>>>,
     active: Pin<Box<Property<bool>>>,
     active_popup: RefCell<Option<PopupWindow>>,
+
+    rendering_notifier: RefCell<Option<Box<dyn RenderingNotifier>>>,
 }
 
 impl Drop for Window {
@@ -171,6 +173,7 @@ impl Window {
             scale_factor: Box::pin(Property::new(1.)),
             active: Box::pin(Property::new(false)),
             active_popup: Default::default(),
+            rendering_notifier: Default::default(),
         });
         let window_weak = Rc::downgrade(&window);
         window.platform_window.set(platform_window_fn(&window_weak)).ok().unwrap();
@@ -544,6 +547,27 @@ impl Window {
             }
         }
     }
+
+    /// This function is called through the public API to register a callback that the backend needs to invoke during
+    /// different phases of rendering.
+    fn set_rendering_notifier(&self, callback: Box<dyn RenderingNotifier>) {
+        let mut notifier = self.rendering_notifier.borrow_mut();
+        if notifier.replace(callback).is_some() {
+            panic!("set_rendering_notifier() called multiple times. This is not supported.")
+        }
+    }
+
+    /// This function can be used to query if any rendering notifiers are installed.
+    pub fn has_rendering_notifier(&self) -> bool {
+        self.rendering_notifier.borrow().is_some()
+    }
+
+    /// Invoke any registered rendering notifiers about the state the backend renderer is currently in.
+    pub fn invoke_rendering_notifier(&self, state: RenderingState) {
+        if let Some(callback) = self.rendering_notifier.borrow_mut().as_mut() {
+            callback.notify(state)
+        }
+    }
 }
 
 impl core::ops::Deref for Window {
@@ -564,6 +588,39 @@ pub trait WindowHandleAccess {
 /// functions and generate a good signature.
 pub type WindowRc = Rc<Window>;
 
+/// This enum describes the different rendering states, that will be provided
+/// to the parameter of the callback for `set_rendering_notifier` on the `Window`.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub enum RenderingState {
+    /// The window has been created and the graphics adapter/context initialized. When OpenGL
+    /// is used for rendering, the context will be current.
+    RenderingSetup,
+    /// The scene of items is about to be rendered.  When OpenGL
+    /// is used for rendering, the context will be current.
+    BeforeRendering,
+    /// The scene of items was rendered, but the back buffer was not sent for display presentation
+    /// yet (for example GL swap buffers). When OpenGL is used for rendering, the context will be current.
+    AfterRendering,
+    /// The window will be destroyed and/or graphics resources need to be released due to other
+    /// constraints.
+    RenderingTeardown,
+}
+
+/// Internal trait that's used to map rendering state callbacks to either a Rust-API provided
+/// impl FnMut or a struct that invokes a C callback and implements Drop to release the closure
+/// on the C++ side.
+pub trait RenderingNotifier {
+    /// Called to notify that rendering has reached a certain state.
+    fn notify(&mut self, state: RenderingState);
+}
+
+impl<F: FnMut(RenderingState)> RenderingNotifier for F {
+    fn notify(&mut self, state: RenderingState) {
+        self(state)
+    }
+}
+
 /// Internal module to define the public Window API, for re-export in the regular Rust crate
 /// and the interpreter crate.
 pub mod api {
@@ -572,6 +629,9 @@ pub mod api {
     /// as the position on the screen.
     #[repr(transparent)]
     pub struct Window(pub(super) super::WindowRc);
+
+    #[doc(inline)]
+    pub use super::RenderingState;
 
     #[doc(hidden)]
     impl From<super::WindowRc> for Window {
@@ -589,6 +649,12 @@ pub mod api {
         /// De-registers the window from the windowing system, therefore hiding it.
         pub fn hide(&self) {
             self.0.hide();
+        }
+
+        /// This function allows registering a callback that's invoked during the different phases of
+        /// rendering. This allows custom rendering on top or below of the scene.
+        pub fn set_rendering_notifier(&self, callback: impl FnMut(RenderingState) + 'static) {
+            self.0.set_rendering_notifier(Box::new(callback))
         }
     }
 }
@@ -712,5 +778,35 @@ pub mod ffi {
     pub unsafe extern "C" fn sixtyfps_windowrc_close_popup(handle: *const WindowRcOpaque) {
         let window = &*(handle as *const WindowRc);
         window.close_popup();
+    }
+
+    /// C binding to the set_rendering_notifier() API of Window
+    #[no_mangle]
+    pub unsafe extern "C" fn sixtyfps_windowrc_set_rendering_notifier(
+        handle: *const WindowRcOpaque,
+        callback: extern "C" fn(rendering_state: RenderingState, user_data: *mut c_void),
+        drop_user_data: extern "C" fn(user_data: *mut c_void),
+        user_data: *mut c_void,
+    ) {
+        struct CNotifier {
+            callback: extern "C" fn(rendering_state: RenderingState, user_data: *mut c_void),
+            drop_user_data: extern "C" fn(*mut c_void),
+            user_data: *mut c_void,
+        }
+
+        impl Drop for CNotifier {
+            fn drop(&mut self) {
+                (self.drop_user_data)(self.user_data)
+            }
+        }
+
+        impl RenderingNotifier for CNotifier {
+            fn notify(&mut self, state: RenderingState) {
+                (self.callback)(state, self.user_data)
+            }
+        }
+
+        let window = &*(handle as *const WindowRc);
+        window.set_rendering_notifier(Box::new(CNotifier { callback, drop_user_data, user_data }))
     }
 }

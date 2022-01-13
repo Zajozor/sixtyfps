@@ -674,7 +674,7 @@ mod weak_handle {
 
 pub use weak_handle::*;
 
-pub use sixtyfps_corelib::window::api::Window;
+pub use sixtyfps_corelib::window::api::{RenderingState, Window};
 
 /// This module contains functions useful for unit tests
 #[cfg(feature = "std")]

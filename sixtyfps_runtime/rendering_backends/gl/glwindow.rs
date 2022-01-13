@@ -17,7 +17,7 @@ use corelib::graphics::*;
 use corelib::input::KeyboardModifiers;
 use corelib::items::{ItemRef, MouseCursor};
 use corelib::layout::Orientation;
-use corelib::window::{PlatformWindow, PopupWindow, PopupWindowLocation};
+use corelib::window::{PlatformWindow, PopupWindow, PopupWindowLocation, RenderingState};
 use corelib::Property;
 use sixtyfps_corelib as corelib;
 use winit::dpi::LogicalSize;
@@ -108,6 +108,16 @@ impl GLWindow {
     pub fn default_font_properties(&self) -> FontRequest {
         self.self_weak.upgrade().unwrap().default_font_properties()
     }
+
+    fn release_graphics_resources(&self) {
+        // Release GL textures and other GPU bound resources.
+        self.with_current_context(|| {
+            self.graphics_cache.borrow_mut().clear();
+            self.texture_cache.borrow_mut().clear();
+
+            self.runtime_window().invoke_rendering_notifier(RenderingState::RenderingTeardown);
+        });
+    }
 }
 
 impl WinitWindow for GLWindow {
@@ -127,7 +137,7 @@ impl WinitWindow for GLWindow {
     fn draw(self: Rc<Self>) {
         let runtime_window = self.self_weak.upgrade().unwrap();
         let scale_factor = runtime_window.scale_factor();
-        runtime_window.draw_contents(|components| {
+        runtime_window.clone().draw_contents(|components| {
             let window = match self.borrow_mapped_window() {
                 Some(window) => window,
                 None => return, // caller bug, doesn't make sense to call draw() when not mapped
@@ -151,6 +161,15 @@ impl WinitWindow for GLWindow {
                     size.height,
                     crate::to_femtovg_color(&window.clear_color),
                 );
+                // For the BeforeRendering rendering notifier callback it's important that this happens *after* clearing
+                // the back buffer, in order to allow the callback to provide its own rendering of the background.
+                // femtovg's clear_rect() will merely schedule a clear call, so flush right away to make it immediate.
+                if runtime_window.has_rendering_notifier() {
+                    canvas.flush();
+                    canvas.set_size(size.width, size.height, 1.0);
+
+                    runtime_window.invoke_rendering_notifier(RenderingState::BeforeRendering);
+                }
             }
 
             let mut renderer = crate::GLItemRenderer {
@@ -183,6 +202,8 @@ impl WinitWindow for GLWindow {
             renderer.graphics_window.texture_cache.borrow_mut().drain();
 
             drop(renderer);
+
+            runtime_window.invoke_rendering_notifier(RenderingState::AfterRendering);
 
             window.opengl_context.swap_buffers();
             window.opengl_context.make_not_current();
@@ -384,6 +405,8 @@ impl PlatformWindow for GLWindow {
         )
         .unwrap();
 
+        runtime_window.invoke_rendering_notifier(RenderingState::RenderingSetup);
+
         opengl_context.make_not_current();
 
         let canvas = Rc::new(RefCell::new(canvas));
@@ -444,10 +467,7 @@ impl PlatformWindow for GLWindow {
 
     fn hide(self: Rc<Self>) {
         // Release GL textures and other GPU bound resources.
-        self.with_current_context(|| {
-            self.graphics_cache.borrow_mut().clear();
-            self.texture_cache.borrow_mut().clear();
-        });
+        self.release_graphics_resources();
 
         self.map_state.replace(GraphicsWindowBackendState::Unmapped);
         /* FIXME:
@@ -619,6 +639,12 @@ impl PlatformWindow for GLWindow {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+impl Drop for GLWindow {
+    fn drop(&mut self) {
+        self.release_graphics_resources();
     }
 }
 
