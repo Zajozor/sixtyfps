@@ -123,6 +123,12 @@ mod the_backend {
             _items: &mut dyn Iterator<Item = Pin<sixtyfps_corelib::items::ItemRef<'a>>>,
         ) {
         }
+        fn set_rendering_notifier(
+            &self,
+            _callback: Box<dyn sixtyfps_corelib::window::RenderingNotifier>,
+        ) {
+            unimplemented!()
+        }
         fn show_popup(&self, _popup: &ComponentRc, _position: sixtyfps_corelib::graphics::Point) {
             todo!()
         }

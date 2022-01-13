@@ -112,6 +112,13 @@ impl PlatformWindow for TestingWindow {
         todo!()
     }
 
+    fn set_rendering_notifier(
+        &self,
+        _callback: Box<dyn sixtyfps_corelib::window::RenderingNotifier>,
+    ) {
+        unimplemented!()
+    }
+
     fn request_window_properties_update(&self) {}
 
     fn apply_window_properties(&self, _window_item: Pin<&sixtyfps_corelib::items::WindowItem>) {
