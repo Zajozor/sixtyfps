@@ -3,6 +3,8 @@
 cmake_minimum_required(VERSION 3.19)
 project(SixtyFPSExamples LANGUAGES CXX)
 
+find_package(OpenGL QUIET)
+
 if (NOT TARGET SixtyFPS::SixtyFPS)
     find_package(SixtyFPS REQUIRED)
     include(FetchContent)
@@ -21,4 +23,7 @@ if (SIXTYFPS_FEATURE_INTERPRETER AND SIXTYFPS_FEATURE_BACKEND_QT)
 endif()
 if (SIXTYFPS_FEATURE_INTERPRETER)
     add_subdirectory(iot-dashboard/)
+endif()
+if (OpenGL_OpenGL_FOUND AND OpenGL_EGL_FOUND AND SIXTYFPS_FEATURE_BACKEND_GL)
+    add_subdirectory(opengl_overlay_cpp)
 endif()
