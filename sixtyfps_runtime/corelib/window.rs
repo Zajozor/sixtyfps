@@ -17,7 +17,7 @@ use core::pin::Pin;
 /// This trait represents the interface that the generated code and the run-time
 /// require in order to implement functionality such as device-independent pixels,
 /// window resizing and other typically windowing system related tasks.
-pub trait PlatformWindow {
+pub trait PlatformWindow: raw_window_handle::HasRawWindowHandle {
     /// Registers the window with the windowing system.
     fn show(self: Rc<Self>);
     /// De-registers the window from the windowing system.
@@ -589,6 +589,13 @@ pub mod api {
         /// De-registers the window from the windowing system, therefore hiding it.
         pub fn hide(&self) {
             self.0.hide();
+        }
+    }
+
+    unsafe impl raw_window_handle::HasRawWindowHandle for Window {
+        #![allow(unsafe_code)]
+        fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
+            self.0.raw_window_handle()
         }
     }
 }

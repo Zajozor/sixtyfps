@@ -1512,6 +1512,12 @@ impl PlatformWindow for QtWindow {
     }
 }
 
+unsafe impl raw_window_handle::HasRawWindowHandle for QtWindow {
+    fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
+        unimplemented!()
+    }
+}
+
 fn get_font(request: FontRequest) -> QFont {
     let family: qttypes::QString = request.family.unwrap_or_default().as_str().into();
     let pixel_size: f32 = request.pixel_size.unwrap_or(0.);

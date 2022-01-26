@@ -621,6 +621,16 @@ impl PlatformWindow for GLWindow {
     }
 }
 
+unsafe impl raw_window_handle::HasRawWindowHandle for GLWindow {
+    fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
+        if let Some(mapped_window) = self.borrow_mapped_window() {
+            mapped_window.opengl_context.window().raw_window_handle()
+        } else {
+            raw_window_handle::RawWindowHandle::Xcb(raw_window_handle::XcbHandle::empty())
+        }
+    }
+}
+
 struct MappedWindow {
     canvas: Option<CanvasRc>,
     opengl_context: crate::OpenGLContext,

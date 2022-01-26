@@ -157,6 +157,12 @@ impl PlatformWindow for TestingWindow {
     }
 }
 
+unsafe impl raw_window_handle::HasRawWindowHandle for TestingWindow {
+    fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
+        unimplemented!()
+    }
+}
+
 /// Initialize the testing backend.
 /// Must be called before any call that would otherwise initialize the rendering backend.
 /// Calling it when the rendering backend is already initialized will have no effects
