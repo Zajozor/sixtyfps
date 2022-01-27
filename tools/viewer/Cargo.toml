@@ -23,7 +23,7 @@ default = ["sixtyfps-backend-qt", "sixtyfps-backend-gl", "x11"]
 [dependencies]
 sixtyfps-corelib = { version = "=0.2.0", path="../../sixtyfps_runtime/corelib" }
 sixtyfps-rendering-backend-default = { version = "=0.2.0", path="../../sixtyfps_runtime/rendering_backends/default" }
-sixtyfps-interpreter = { version = "=0.2.0", path = "../../sixtyfps_runtime/interpreter", default-features = false, features = ["display-diagnostics"] }
+sixtyfps-interpreter = { version = "=0.2.0", path = "../../sixtyfps_runtime/interpreter", default-features = false, features = ["display-diagnostics", "compat-0-2-0"] }
 vtable = { version = "0.1", path="../../helper_crates/vtable" }
 clap = { version = "3.0.5", features=["derive", "wrap_help"] }
 codemap-diagnostic = "0.1.1"

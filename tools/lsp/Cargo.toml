@@ -30,7 +30,7 @@ default = ["sixtyfps-backend-qt", "sixtyfps-backend-gl", "x11"]
 
 [dependencies]
 sixtyfps-compilerlib = { version = "=0.2.0", path = "../../sixtyfps_compiler"}
-sixtyfps-interpreter = { version = "=0.2.0", path = "../../sixtyfps_runtime/interpreter", default-features = false }
+sixtyfps-interpreter = { version = "=0.2.0", path = "../../sixtyfps_runtime/interpreter", default-features = false, features = ["compat-0-2-0"] }
 sixtyfps-corelib = { version = "=0.2.0", path = "../../sixtyfps_runtime/corelib"}
 sixtyfps-rendering-backend-default = { version = "=0.2.0", path="../../sixtyfps_runtime/rendering_backends/default" }
 lsp-types = "0.91.0"

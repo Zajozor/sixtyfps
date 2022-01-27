@@ -35,7 +35,7 @@ default = ["backend-gl", "x11", "backend-qt"]
 sixtyfps-corelib = { version = "=0.2.0", path="../../sixtyfps_runtime/corelib", features = ["ffi"] }
 sixtyfps-rendering-backend-default = { version = "=0.2.0", path="../../sixtyfps_runtime/rendering_backends/default" }
 sixtyfps-rendering-backend-testing = { version = "=0.2.0", path="../../sixtyfps_runtime/rendering_backends/testing", optional = true }
-sixtyfps-interpreter = { version = "=0.2.0", path="../../sixtyfps_runtime/interpreter", default-features = false, features = ["ffi"], optional = true }
+sixtyfps-interpreter = { version = "=0.2.0", path="../../sixtyfps_runtime/interpreter", default-features = false, features = ["ffi", "compat-0-2-0"], optional = true }
 
 [build-dependencies]
 cbindgen = "0.20"

@@ -17,13 +17,28 @@ keywords = ["gui", "toolkit", "graphics", "design", "ui"]
 path = "lib.rs"
 
 [features]
+
+# Default features
+default = ["backend-gl", "x11", "backend-qt", "compat-0-2-0"]
+
+# Mandatory feature:
+# This feature is required to keep the compatibility with SixtyFPS 0.2.0
+# Newer patch version may put current functionality behind a new feature
+# that would be enabled by default only if this feature was added
+compat-0-2-0 = []
+
+# Ability to print the diagnostics on std out
 display-diagnostics = ["sixtyfps-compilerlib/display-diagnostics"]
+
+# Enable the FFI to be used with C++
 ffi = ["spin_on", "sixtyfps-corelib/ffi"]
+
+# Backends
 x11 = ["sixtyfps-rendering-backend-default/x11"]
 wayland = ["sixtyfps-rendering-backend-default/wayland"]
 backend-gl = ["sixtyfps-rendering-backend-default/sixtyfps-rendering-backend-gl"]
 backend-qt = ["sixtyfps-rendering-backend-default/sixtyfps-rendering-backend-qt"]
-default = ["backend-gl", "x11", "backend-qt"]
+
 
 [dependencies]
 sixtyfps-corelib = { version = "=0.2.0", path = "../corelib", features = ["rtti"] }
